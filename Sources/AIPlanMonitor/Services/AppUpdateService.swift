@@ -57,7 +57,7 @@ enum AppUpdateError: LocalizedError {
 }
 
 actor AppUpdateService {
-    static let owner = "bddiudiu"
+    static let owner = "Four-JJJJ"
     static let repository = "AI-Plan-Monitor"
     static let repositoryURL = URL(string: "https://github.com/\(owner)/\(repository)")!
     static let releasesURL = URL(string: "https://github.com/\(owner)/\(repository)/releases/latest")!
@@ -264,6 +264,14 @@ actor AppUpdateService {
             return String(trimmed.dropFirst())
         }
         return trimmed
+    }
+
+    static func releasePageURL(forVersion version: String) -> URL {
+        let tag = releaseTagCandidates(forVersion: version).first ?? version
+        return repositoryURL
+            .appendingPathComponent("releases", isDirectory: true)
+            .appendingPathComponent("tag", isDirectory: true)
+            .appendingPathComponent(tag)
     }
 
     static func releaseTagCandidates(forVersion version: String) -> [String] {

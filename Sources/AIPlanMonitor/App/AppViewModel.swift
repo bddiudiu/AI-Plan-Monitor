@@ -256,6 +256,17 @@ final class AppViewModel {
         NSWorkspace.shared.open(AppUpdateService.repositoryURL)
     }
 
+    func openCurrentVersionReleaseNotes() {
+        ReleaseNotesWindowController.shared.show(
+            releaseNotes: PendingPostUpdateReleaseNotes(
+                version: currentAppVersion,
+                releaseURL: AppUpdateService.releasePageURL(forVersion: currentAppVersion),
+                notesURL: nil,
+                createdAt: Date()
+            )
+        )
+    }
+
     func openLatestReleaseDownload() {
         performUpdateAction(allowCheckForUpdateFallback: true)
     }

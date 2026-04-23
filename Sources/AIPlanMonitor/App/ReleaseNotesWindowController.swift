@@ -5,6 +5,13 @@ final class ReleaseNotesWindowController: NSObject, NSWindowDelegate {
     static let shared = ReleaseNotesWindowController()
 
     private let releaseNotesService = AppUpdateService()
+    private let bodyFont = NSFont.systemFont(ofSize: 14)
+    private let minContentSize = NSSize(width: 520, height: 220)
+    private let maxContentSize = NSSize(width: 920, height: 720)
+    private let bodyHorizontalInset: CGFloat = 28
+    private let bodyVerticalInset: CGFloat = 28
+    private let extraScrollChromeWidth: CGFloat = 22
+    private let buttonRowHeight: CGFloat = 52
     private var window: NSWindow?
     private var textView: NSTextView?
     private var openButton: NSButton?
@@ -55,7 +62,7 @@ final class ReleaseNotesWindowController: NSObject, NSWindowDelegate {
         textView.isSelectable = true
         textView.importsGraphics = false
         textView.drawsBackground = false
-        textView.font = .systemFont(ofSize: 14)
+        textView.font = bodyFont
         textView.textColor = .labelColor
         textView.textContainerInset = NSSize(width: 14, height: 14)
         self.textView = textView
@@ -105,7 +112,7 @@ final class ReleaseNotesWindowController: NSObject, NSWindowDelegate {
         panel.titleVisibility = .visible
         panel.isReleasedWhenClosed = false
         panel.delegate = self
-        panel.minSize = NSSize(width: 700, height: 480)
+        panel.minSize = frameSize(forContentSize: minContentSize)
         panel.contentView = container
         self.window = panel
         return panel
@@ -113,7 +120,93 @@ final class ReleaseNotesWindowController: NSObject, NSWindowDelegate {
 
     private func setBodyText(_ text: String) {
         textView?.string = text
+        updateWindowSize(for: text)
         textView?.scrollToBeginningOfDocument(nil)
+    }
+
+    private func updateWindowSize(for text: String) {
+        guard let window else { return }
+
+        let contentSize = preferredContentSize(for: text)
+        let targetFrameSize = frameSize(forContentSize: contentSize)
+        let currentFrame = window.frame
+        let newOrigin = NSPoint(
+            x: currentFrame.midX - targetFrameSize.width / 2,
+            y: currentFrame.midY - targetFrameSize.height / 2
+        )
+
+        window.setFrame(
+            NSRect(origin: newOrigin, size: targetFrameSize),
+            display: true,
+            animate: true
+        )
+    }
+
+    private func preferredContentSize(for text: String) -> NSSize {
+        let maxAvailableSize = maximumAvailableContentSize()
+        let clampedMaxWidth = min(maxAvailableSize.width, maxContentSize.width)
+        let clampedMaxHeight = min(maxAvailableSize.height, maxContentSize.height)
+        let width = preferredBodyWidth(for: text, maximumContentWidth: clampedMaxWidth)
+        let bodyHeight = preferredBodyHeight(
+            for: text,
+            bodyWidth: width - bodyHorizontalInset - extraScrollChromeWidth
+        )
+
+        return NSSize(
+            width: min(max(minContentSize.width, width), clampedMaxWidth),
+            height: min(
+                max(minContentSize.height, bodyHeight + bodyVerticalInset + buttonRowHeight),
+                clampedMaxHeight
+            )
+        )
+    }
+
+    private func preferredBodyWidth(for text: String, maximumContentWidth: CGFloat) -> CGFloat {
+        let maxBodyWidth = maximumContentWidth - bodyHorizontalInset - extraScrollChromeWidth
+        let minBodyWidth = minContentSize.width - bodyHorizontalInset - extraScrollChromeWidth
+        let widestLine = text
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .map { String($0) }
+            .reduce(CGFloat.zero) { partialResult, line in
+                max(partialResult, measuredSingleLineWidth(for: line))
+            }
+
+        let targetBodyWidth = min(max(minBodyWidth, widestLine), maxBodyWidth)
+        return targetBodyWidth + bodyHorizontalInset + extraScrollChromeWidth
+    }
+
+    private func preferredBodyHeight(for text: String, bodyWidth: CGFloat) -> CGFloat {
+        let constrainedWidth = max(200, bodyWidth)
+        let measured = (text as NSString).boundingRect(
+            with: NSSize(width: constrainedWidth, height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: [.font: bodyFont],
+            context: nil
+        )
+        return ceil(measured.height)
+    }
+
+    private func measuredSingleLineWidth(for line: String) -> CGFloat {
+        let candidate = line.isEmpty ? " " : line
+        let measured = (candidate as NSString).size(withAttributes: [.font: bodyFont])
+        return ceil(measured.width)
+    }
+
+    private func maximumAvailableContentSize() -> NSSize {
+        guard let visibleFrame = NSScreen.main?.visibleFrame else {
+            return maxContentSize
+        }
+        return NSSize(
+            width: max(minContentSize.width, visibleFrame.width - 120),
+            height: max(minContentSize.height, visibleFrame.height - 120)
+        )
+    }
+
+    private func frameSize(forContentSize contentSize: NSSize) -> NSSize {
+        guard let window else {
+            return contentSize
+        }
+        return window.frameRect(forContentRect: NSRect(origin: .zero, size: contentSize)).size
     }
 
     private func title(for version: String) -> String {
