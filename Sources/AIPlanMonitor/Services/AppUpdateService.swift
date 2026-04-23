@@ -57,7 +57,7 @@ enum AppUpdateError: LocalizedError {
 }
 
 actor AppUpdateService {
-    static let owner = "Four-JJJJ"
+    static let owner = "bddiudiu"
     static let repository = "AI-Plan-Monitor"
     static let repositoryURL = URL(string: "https://github.com/\(owner)/\(repository)")!
     static let releasesURL = URL(string: "https://github.com/\(owner)/\(repository)/releases/latest")!
